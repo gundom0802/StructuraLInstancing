@@ -1,0 +1,9 @@
+name: StructuraLInstancing
+version: '${version}'
+main: structuralinstancing.structuralinstancing.StructuraLInstancing
+api-version: '1.20'
+commands:
+  instance:
+    description: "main command for instances"
+    usage: "/instance <action>"
+    aliases: [ins]
