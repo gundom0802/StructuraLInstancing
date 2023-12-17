@@ -1,8 +1,11 @@
 package structuralinstancing.structuralinstancing.util;
 
+import com.google.common.io.ByteArrayDataOutput;
+import com.google.common.io.ByteStreams;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
+import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -12,12 +15,13 @@ import structuralinstancing.structuralinstancing.StructuraLInstancing;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class StructureUtil {
 
-	final static Map<String, Location> STRUCTURESET = new HashMap<>();
+	final static Map<String, Location> LOCATION_MAP = new HashMap<>();
+
+	final static Set<Location> SAVED_LOCATIONS = new HashSet<>();
 
 
 	public static void initializeStructures(StructuraLInstancing plugin, StructureManager strmanager) {
@@ -28,7 +32,7 @@ public class StructureUtil {
 		double startlocationz;
 
 		try {
-			File instanceconfigfile = new File(plugin.getDataFolder(), "general.yml");
+			File instanceconfigfile = new File(plugin.getDataFolder(), "instances.yml");
 			YamlConfiguration general_config = new YamlConfiguration();
 			general_config.load(instanceconfigfile);
 			for (String key : general_config.getKeys(false)) {
@@ -45,12 +49,14 @@ public class StructureUtil {
 				Location loc = new Location(plugin.getServer().getWorld(world), startlocationx, startlocationy, startlocationz);
 
 				Structure structure = strmanager.loadStructure(new NamespacedKey("test", key));
+				Structure emptystructure = strmanager.loadStructure(new NamespacedKey("test", key + "empty"));
 
 
-				if (structure != null) {
+				if (structure != null && emptystructure != null) {
 					strmanager.registerStructure(new NamespacedKey("test", key), structure);
+					strmanager.registerStructure(new NamespacedKey("test", key + "empty"), emptystructure);
 
-					STRUCTURESET.put(key, loc);
+					LOCATION_MAP.put(key, loc);
 
 					}
 				else {
@@ -70,12 +76,12 @@ public class StructureUtil {
 	}
 
 	public static Location getLocation(String structurename, StructureManager strmanager) {
-		return STRUCTURESET.get(structurename);
+		return LOCATION_MAP.get(structurename);
 	}
 
-	public static boolean setLocation(String structurename, StructureManager strmanager, StructuraLInstancing plugin) {
+	public static boolean setLocationConfig(String structurename, StructureManager strmanager, StructuraLInstancing plugin) {
 		try {
-			File instanceconfigfile = new File(plugin.getDataFolder(), "general.yml");
+			File instanceconfigfile = new File(plugin.getDataFolder(), "instances.yml");
 			YamlConfiguration general_config = new YamlConfiguration();
 			general_config.load(instanceconfigfile);
 
@@ -85,7 +91,7 @@ public class StructureUtil {
 			double spacing = config_section.getDouble("spacing");
 			int iteration = config_section.getInt("iteration");
 
-			Location loc = STRUCTURESET.get(structurename);
+			Location loc = LOCATION_MAP.get(structurename);
 			loc.add(spacing, 0, 0);
 			if (iteration == 5) {
 				loc.add((-1)*(spacing*5), 0, spacing);
@@ -99,7 +105,7 @@ public class StructureUtil {
 				Bukkit.getLogger().info("check");
 			}
 
-			STRUCTURESET.replace(structurename, loc);
+			LOCATION_MAP.replace(structurename, loc);
 
 			config_section.set("iteration", iteration);
 			config_section.set("start-x", loc.getX());
@@ -111,5 +117,23 @@ public class StructureUtil {
 			throw new RuntimeException(e);
 		}
 		return true;
+	}
+	public static String serializeLocation(Location loc) {
+		return loc.getX() + ";" + loc.getY() + ";" + loc.getZ() + ";" + loc.getWorld().getUID();
+
+
+	}
+
+	public static Location deserializeLocation(String s) {
+		String[] s_parts = s.split(";");
+		double x = Double.parseDouble(s_parts[0]);
+		double y = Double.parseDouble(s_parts[1]);
+		double z = Double.parseDouble(s_parts[2]);
+		UUID u = UUID.fromString(s_parts[3]);
+		World w = Bukkit.getServer().getWorld(u);
+		if (w == null) {
+			return null;
+		}
+		return new Location(w, x, y, z);
 	}
 }
